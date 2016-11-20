@@ -76,6 +76,7 @@ namespace ConsoleApplication
             switch ( invocation.Method.Name ) {
                 case "Save":
                     Console.WriteLine("SAVE");
+                    invocation.ReturnValue = "ok";
                     break;
                 default:
                     Console.WriteLine("unhandled");
