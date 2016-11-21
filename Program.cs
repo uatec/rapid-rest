@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 using Castle.DynamicProxy;
 using Microsoft.AspNetCore.Builder;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace ConsoleApplication
 {
@@ -67,6 +69,24 @@ public class Startup
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
+
+
+            var repoTypes = Assembly
+                .GetEntryAssembly()
+                .GetTypes()
+                .Where(t => t.GetInterfaces().Length > 0)
+                .Where(t => {
+                    return t.GetInterfaces().Length > 0 &&
+                    t.GetInterfaces()[0].FullName.Contains('[') && 
+                    t.GetInterfaces()[0].FullName.Substring(0, t.GetInterfaces()[0].FullName.IndexOf('[')) == typeof(IRepository<>).FullName; 
+                });
+            Console.WriteLine("ok");
+            foreach ( var t in repoTypes )
+            {
+                
+                Console.WriteLine($"{t.FullName} => {t.GetInterfaces()[0].GetGenericArguments()[0].FullName}");
+            }
+
             app.UseMiddleware<RestApi>();
         }
     }
@@ -80,6 +100,9 @@ public class Startup
         {
             _next = next;
             _logger = loggerFactory.CreateLogger<RestApi>();
+
+
+
         }
 
         public async Task Invoke(HttpContext context)
