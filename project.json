@@ -15,7 +15,8 @@
     "Microsoft.Extensions.Logging": "1.0.0",
     "Microsoft.Extensions.Logging.Console": "1.0.0",
     "Microsoft.Extensions.Logging.Debug": "1.0.0",
-    "Microsoft.AspNetCore.Routing": "1.1.0-preview1-final"
+    "Microsoft.AspNetCore.Routing": "1.1.0-preview1-final",
+    "Newtonsoft.Json": "9.0.2-beta1"
   },
   "frameworks": {
     "netcoreapp1.0": {

@@ -11,6 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using Microsoft.AspNetCore.Routing;
+using Newtonsoft.Json;
+using System.IO;
+using Newtonsoft.Json.Linq;
 
 namespace ConsoleApplication
 {
@@ -95,16 +98,88 @@ public class Startup
 
             var routeBuilder = new RouteBuilder(app);
 
-            routeBuilder.MapGet("api/v1/{type}/{*id}", context =>
+            var store = new InMemoryStore();
+
+            routeBuilder.MapGet("api/v1/{type}/{*id}", context => {
+                var type = context.GetRouteValue("type");
+                var id = context.GetRouteValue("id");
+                if ( id == null ) {
+                    var items = store.GetAll();
+                    var response = JsonConvert.SerializeObject(items);
+                    return context.Response.WriteAsync(response);
+                }
+                var item = store.Get((string) id);
+                var itemResponse = JsonConvert.SerializeObject(item);
+                return context.Response.WriteAsync(itemResponse);
+            });  
+            
+            routeBuilder.MapPost("api/v1/{type}/{*id}", context =>
+            {
+                string type = (string) context.GetRouteValue("type");
+                string id = (string) context.GetRouteValue("id");
+                var serializer = new JsonSerializer();
+                using ( var bodyReader = new StreamReader(context.Request.Body))
+                {
+                    var obj = JObject.Parse(bodyReader.ReadToEnd());
+                    if ( id == null && obj["id"] != null) {
+                        id = obj["id"].Value<string>();
+                    }
+                    if ( obj["id"] == null && id != null) {
+                        obj["id"] = id;
+                    }
+                    if ( id == null ) {
+                        id = Guid.NewGuid().ToString();
+                        obj["id"] = new JValue(id);
+                    }
+                    store.Add(obj);
+                    return context.Response.WriteAsync($"api/v1/{type}/{id}");
+                }
+            });  
+            routeBuilder.MapPut("api/v1/{type}/{*id}", context =>
             {
                 var type = context.GetRouteValue("type");
                 var id = context.GetRouteValue("id");
-                return context.Response.WriteAsync($"Hi, {type}:{id}!");
-            });            
+                return context.Response.WriteAsync($"PUT, {type}:{id}!");
+            });  
+            routeBuilder.MapDelete("api/v1/{type}/{id}", context =>
+            {
+                var type = context.GetRouteValue("type");
+                var id = context.GetRouteValue("id");
+                return context.Response.WriteAsync($"DELETE, {type}:{id}!");
+            });  
 
             var routes = routeBuilder.Build();
             app.UseRouter(routes);
             
+        }
+    }
+
+    public class InMemoryStore {
+
+        private List<JObject> _data = new List<JObject>();
+
+        public IEnumerable<JObject> GetAll() 
+        {
+            return _data;
+        }
+
+        public void Add(JObject obj)
+        {
+            // TODO: Dedupe by Id?
+            _data.Add(obj);
+        }
+
+        public JObject Get(string id)
+        {
+            var output = _data.Single(d => d["id"].Value<string>() == id);            
+            return output;
+        }
+
+        public JObject Delete(string id)
+        {
+            var objectToDelete = _data.Single(d => d["id"].Value<string>() == id);
+            _data.Remove(objectToDelete);
+            return objectToDelete;
         }
     }
     
