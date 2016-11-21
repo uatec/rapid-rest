@@ -79,37 +79,66 @@ public class Startup
                     return t.GetInterfaces().Length > 0 &&
                     t.GetInterfaces()[0].FullName.Contains('[') && 
                     t.GetInterfaces()[0].FullName.Substring(0, t.GetInterfaces()[0].FullName.IndexOf('[')) == typeof(IRepository<>).FullName; 
+                })
+                .Select(t => new Registration {
+                    Name = t.GetInterfaces()[0].GetGenericArguments()[0].Name,
+                    ResourceType = t.GetInterfaces()[0].GetGenericArguments()[0]
                 });
-            Console.WriteLine("ok");
+
             foreach ( var t in repoTypes )
             {
                 
-                Console.WriteLine($"{t.FullName} => {t.GetInterfaces()[0].GetGenericArguments()[0].FullName}");
+                Console.WriteLine($"{t.Name} => {t.ResourceType.FullName}");
             }
 
-            app.UseMiddleware<RestApi>();
+            app.UseMiddleware<RestApi>(repoTypes);
         }
+    }
+    
+    public class Registration
+    {
+        public string Name { get; set; }
+
+        public Type ResourceType { get; set; }
     }
 
     public class RestApi
     {
         private readonly RequestDelegate _next;
         private readonly ILogger _logger;
-
-        public RestApi(RequestDelegate next, ILoggerFactory loggerFactory)
+        private readonly IEnumerable<Registration> _repoTypes;
+        string basePath = "/api/v1/";
+        public RestApi(RequestDelegate next, ILoggerFactory loggerFactory, IEnumerable<Registration> repoTypes)
         {
             _next = next;
             _logger = loggerFactory.CreateLogger<RestApi>();
+            _repoTypes = repoTypes;
+        }
 
-
-
+        private string route(string path)
+        {
+            path = path.Substring(basePath.Length);
+            var type = _repoTypes.SingleOrDefault(t => path.StartsWith(t.Name));
+            if ( type == null ) return null;
+            return type.Name;
         }
 
         public async Task Invoke(HttpContext context)
         {
-            context.Response.StatusCode = 200;
-            await context.Response.WriteAsync("ok");
+            try 
+            {  
+                var route = this.route(context.Request.Path);
+                Console.WriteLine(route);
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsync("ok");
+            }
+            catch ( Exception ex )
+            {
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync(ex.Message + ex.StackTrace);
+            }
         }
+
     }
     
     public class Taests 
