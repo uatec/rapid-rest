@@ -132,7 +132,9 @@ public class Startup
                         obj["id"] = new JValue(id);
                     }
                     store.Add(obj);
-                    return context.Response.WriteAsync($"api/v1/{type}/{id}");
+                    context.Response.Headers.Add("Location", $"api/v1/{type}/{id}");
+                    context.Response.StatusCode = 201;
+                    return context.Response.WriteAsync(string.Empty);
                 }
             });  
             routeBuilder.MapPut("api/v1/{type}/{*id}", context =>
