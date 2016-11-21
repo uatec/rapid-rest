@@ -137,17 +137,14 @@ public class Startup
                     return context.Response.WriteAsync(string.Empty);
                 }
             });  
-            routeBuilder.MapPut("api/v1/{type}/{*id}", context =>
-            {
-                var type = context.GetRouteValue("type");
-                var id = context.GetRouteValue("id");
-                return context.Response.WriteAsync($"PUT, {type}:{id}!");
-            });  
             routeBuilder.MapDelete("api/v1/{type}/{id}", context =>
             {
                 var type = context.GetRouteValue("type");
                 var id = context.GetRouteValue("id");
-                return context.Response.WriteAsync($"DELETE, {type}:{id}!");
+                
+                var item = store.Delete((string) id);
+                var itemResponse = JsonConvert.SerializeObject(item);
+                return context.Response.WriteAsync(itemResponse);
             });  
 
             var routes = routeBuilder.Build();
