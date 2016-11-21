@@ -93,23 +93,12 @@ public class Startup
                 Console.WriteLine($"{t.Name} => {t.ResourceType.FullName}");
             }
 
-
-            var trackPackageRouteHandler = new RouteHandler(context =>
-            {
-                var routeValues = context.GetRouteData().Values;
-                return context.Response.WriteAsync(
-                    $"Hello! Route values: {string.Join(", ", routeValues)}");
-            });
-
-            var routeBuilder = new RouteBuilder(app, trackPackageRouteHandler);
+            var routeBuilder = new RouteBuilder(app);
 
             routeBuilder.MapGet("api/v1/{type}/{*id}", context =>
             {
                 var type = context.GetRouteValue("type");
                 var id = context.GetRouteValue("id");
-                // This is the route handler when HTTP GET "hello/<anything>"  matches
-                // To match HTTP GET "hello/<anything>/<anything>, 
-                // use routeBuilder.MapGet("hello/{*name}"
                 return context.Response.WriteAsync($"Hi, {type}:{id}!");
             });            
 
