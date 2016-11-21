@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Linq;
+using Microsoft.AspNetCore.Routing;
 
 namespace ConsoleApplication
 {
@@ -60,6 +61,7 @@ public class Startup
         {
             // Add framework services.
 
+           services.AddRouting();
         }
         #endregion
 
@@ -91,7 +93,29 @@ public class Startup
                 Console.WriteLine($"{t.Name} => {t.ResourceType.FullName}");
             }
 
-            app.UseMiddleware<RestApi>(repoTypes);
+
+            var trackPackageRouteHandler = new RouteHandler(context =>
+            {
+                var routeValues = context.GetRouteData().Values;
+                return context.Response.WriteAsync(
+                    $"Hello! Route values: {string.Join(", ", routeValues)}");
+            });
+
+            var routeBuilder = new RouteBuilder(app, trackPackageRouteHandler);
+
+            routeBuilder.MapGet("api/v1/{type}/{*id}", context =>
+            {
+                var type = context.GetRouteValue("type");
+                var id = context.GetRouteValue("id");
+                // This is the route handler when HTTP GET "hello/<anything>"  matches
+                // To match HTTP GET "hello/<anything>/<anything>, 
+                // use routeBuilder.MapGet("hello/{*name}"
+                return context.Response.WriteAsync($"Hi, {type}:{id}!");
+            });            
+
+            var routes = routeBuilder.Build();
+            app.UseRouter(routes);
+            
         }
     }
     
@@ -100,45 +124,6 @@ public class Startup
         public string Name { get; set; }
 
         public Type ResourceType { get; set; }
-    }
-
-    public class RestApi
-    {
-        private readonly RequestDelegate _next;
-        private readonly ILogger _logger;
-        private readonly IEnumerable<Registration> _repoTypes;
-        string basePath = "/api/v1/";
-        public RestApi(RequestDelegate next, ILoggerFactory loggerFactory, IEnumerable<Registration> repoTypes)
-        {
-            _next = next;
-            _logger = loggerFactory.CreateLogger<RestApi>();
-            _repoTypes = repoTypes;
-        }
-
-        private string route(string path)
-        {
-            path = path.Substring(basePath.Length);
-            var type = _repoTypes.SingleOrDefault(t => path.StartsWith(t.Name));
-            if ( type == null ) return null;
-            return type.Name;
-        }
-
-        public async Task Invoke(HttpContext context)
-        {
-            try 
-            {  
-                var route = this.route(context.Request.Path);
-                Console.WriteLine(route);
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsync("ok");
-            }
-            catch ( Exception ex )
-            {
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsync(ex.Message + ex.StackTrace);
-            }
-        }
-
     }
     
     public class Taests 
